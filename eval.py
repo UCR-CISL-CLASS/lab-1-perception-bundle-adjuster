@@ -48,7 +48,7 @@ def convert_format(boxes_array):
         list of converted shapely.geometry.Polygon object.
 
     """
-    polygons = [Polygon([(box[i, 0], box[i, 1]) for i in range(4)]) for box in
+    polygons = [Polygon([(box[i, 0], box[i, 1], box[i,2]) for i in range(8)]) for box in
                 boxes_array]
     return np.array(polygons)
 
@@ -108,9 +108,10 @@ def caluclate_tp_fp(det_boxes, det_score, gt_boxes, result_stat, iou_thresh):
         det_polygon_list = list(convert_format(det_boxes))
         gt_polygon_list = list(convert_format(gt_boxes))
 
+        # import pdb; pdb.set_trace()
         # match prediction and gt bounding box
         for i in range(score_order_descend.shape[0]):
-            det_polygon = det_polygon_list[score_order_descend[i]]
+            det_polygon = det_polygon_list[score_order_descend[i][0].astype(int)]
             ious = compute_iou(det_polygon, gt_polygon_list)
 
             if len(gt_polygon_list) == 0 or np.max(ious) < iou_thresh:

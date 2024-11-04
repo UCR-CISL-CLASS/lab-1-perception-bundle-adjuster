@@ -1,3 +1,9 @@
+import numpy as np
+# from mmdet3d.apis import init_model, inference_multi_modality_detector
+from mmdet3d.apis import MultiModalityDet3DInferencer, LidarDet3DInferencer
+from mmdet3d.structures import LiDARInstance3DBoxes
+
+
 class Detector:
     def __init__(self):
         # Add your initialization logic here
@@ -62,6 +68,53 @@ class Detector:
                 det_score : numpy.ndarray
                     The confidence score for each predicted bounding box, shape (N, 1) corresponding to the above bounding box.
         """
-        return {}
+        # Initialize the model
+        config_file = '/data/UCR_student/sds/code/lab-1-perception-bundle-adjuster/mmdetection3d/configs/pointpillars/pointpillars_hv_secfpn_8xb6-160e_kitti-3d-car.py'
+        checkpoint_file = '/data/UCR_student/sds/code/lab-1-perception-bundle-adjuster/model/hv_pointpillars_secfpn_6x8_160e_kitti-3d-car_20220331_134606-d42d15ed.pth'
+        # model_inferencer = MultiModalityDet3DInferencer(model=config_file,weights=checkpoint_file, device='cuda:0')
+        inferencer = LidarDet3DInferencer(config_file, checkpoint_file, device='cuda:0')
+        # model = init_model(config_file, checkpoint_file, device='cuda:0')
+        print("Model initialized")
+
+        # Prepare the input data for the model
+        images = []
+        lidar_data = None
+        for sensor_id, (frame_id, data) in sensor_data.items():
+            if sensor_id in ['Left', 'Right']:
+                images.append(data[:, :, :3])  # Use only RGB channels
+            elif sensor_id == 'LIDAR':
+                lidar_data = data
+
+        # Perform inference
+        # results = inference_multi_modality_detector(model, images, lidar_data)
+        results = inferencer({"points":lidar_data})
+
+        # Process the results
+        det_boxes = []
+        det_class = []
+        det_score = []
+
+        preds = results['predictions']
+
+        # import pdb; pdb.set_trace()        
+        for result in preds:
+            bbox = LiDARInstance3DBoxes(result['bboxes_3d'])
+            det_boxes.append(np.array(bbox.corners).astype(int))
+            for label in result['labels_3d']:
+                det_class.append(label)
+            for score in result['scores_3d']:
+                det_score.append(score)
+
+        det_boxes = np.array(det_boxes).reshape(-1, 8, 3)
+        det_class = np.array(det_class).reshape(-1, 1)
+        det_score = np.array(det_score).reshape(-1, 1)
+
+        import pdb; pdb.set_trace()
+
+        return {
+            'det_boxes': det_boxes,
+            'det_class': det_class,
+            'det_score': det_score
+        }
 
     
